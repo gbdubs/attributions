@@ -13,6 +13,7 @@ type Attribution struct {
 	OriginalTitle       string    `xml:"original_title"`
 	Author              string    `xml:"author"`
 	AuthorUrl           string    `xml:"author_url"`
+	License             string    `xml:"license"`
 	LicenseUrl          string    `xml:"license_url"`
 	CreatedAt           time.Time `xml:"created_at"`
 	Context             []string  `xml:"context"`

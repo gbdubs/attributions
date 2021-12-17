@@ -10,23 +10,23 @@ import (
 )
 
 type localAttributedFile struct {
-	attributions   []Attribution
-	dataPath       string
-	sha256Checksum string
+	Attribs        []Attribution
+	DataPath       string
+	Sha256Checksum string
 }
 
 func (f *localAttributedFile) Attributions() []Attribution {
-	return f.attributions
+	return f.Attribs
 }
 
 func (f *localAttributedFile) Read() ([]byte, error) {
-	b, err := ioutil.ReadFile(f.dataPath)
+	b, err := ioutil.ReadFile(f.DataPath)
 	if err != nil {
 		return b, err
 	}
 	s := bytesSHA256(b)
-	if s != f.sha256Checksum {
-		return b, fmt.Errorf("Checksum mismatch - attribution may be stale %s versus %s.", s, f.sha256Checksum)
+	if s != f.Sha256Checksum {
+		return b, fmt.Errorf("Checksum mismatch - attribution may be stale %s versus %s.", s, f.Sha256Checksum)
 	}
 	return b, nil
 }
@@ -37,20 +37,20 @@ func (f *localAttributedFile) ReadString() (string, error) {
 }
 
 type rawAttributedFile struct {
-	attributions []Attribution
-	data         string
+	Attribs []Attribution
+	Data    string
 }
 
 func (f *rawAttributedFile) Attributions() []Attribution {
-	return f.attributions
+	return f.Attribs
 }
 
 func (f *rawAttributedFile) Read() ([]byte, error) {
-	return []byte(f.data), nil
+	return []byte(f.Data), nil
 }
 
 func (f *rawAttributedFile) ReadString() (string, error) {
-	return f.data, nil
+	return f.Data, nil
 }
 
 const attributedFileExtension = ".attrib"
@@ -66,27 +66,34 @@ func readAttributedFile(filePath string) (AttributedFile, error) {
 	return nil, fmt.Errorf("Unrecognized attributed file format %s.", filePath)
 }
 
-func readAllAttributedFiles(dirPath string) ([]AttributedFile, error) {
-	var files []string
+func readAllAttributedFilePointers(dirPath string) ([]AttributedFilePointer, error) {
+	var files []AttributedFilePointer
 	visit := func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return fmt.Errorf("Recursive search error at path %s: %v", path, err)
 		}
 		if strings.HasSuffix(path, attributedFileExtension) {
-			files = append(files, path)
+			files = append(files, AttributedFilePointer{FilePath: path})
 		}
 		return nil
 	}
 	err := filepath.Walk(dirPath, visit)
-	empty := []AttributedFile{}
 	if err != nil {
-		return empty, err
+		return []AttributedFilePointer{}, err
 	}
-	result := make([]AttributedFile, len(files))
-	for i, file := range files {
-		af, err := ReadAttributedFile(file)
+	return files, nil
+}
+
+func readAllAttributedFiles(dirPath string) ([]AttributedFile, error) {
+	pointers, err := readAllAttributedFilePointers(dirPath)
+	if err != nil {
+		return []AttributedFile{}, err
+	}
+	result := make([]AttributedFile, len(pointers))
+	for i, ptr := range pointers {
+		af, err := ptr.ReadAttributedFile()
 		if err != nil {
-			return empty, fmt.Errorf("Error reading raw attributed file: %v", err)
+			return []AttributedFile{}, fmt.Errorf("Error reading raw attributed file: %v", err)
 		}
 		result[i] = af
 	}
@@ -129,32 +136,33 @@ func readRawAttributedFile(filePath string) (AttributedFile, error) {
 	return result, nil
 }
 
-func attributeLocalFile(filePath string, attributions ...Attribution) error {
+func attributeLocalFile(filePath string, attributions ...Attribution) (AttributedFilePointer, error) {
 	sha256, err := fileSHA256(filePath)
 	if err != nil {
-		return fmt.Errorf("Error computing sha256 for file %s: %v", filePath, err)
+		return AttributedFilePointer{}, fmt.Errorf("Error computing sha256 for file %s: %v", filePath, err)
 	}
 	laf := &localAttributedFile{
-		attributions:   attributions,
-		dataPath:       filePath,
-		sha256Checksum: sha256,
+		Attribs:        attributions,
+		DataPath:       filePath,
+		Sha256Checksum: sha256,
 	}
 	aPath := filePath + localAttributedFileExtension
 	file, err := xml.MarshalIndent(laf, "", " ")
 	if err != nil {
-		return fmt.Errorf("Error serializing the local attribution for content %s: %v", filePath, err)
+		return AttributedFilePointer{}, fmt.Errorf("Error serializing the local attribution for content %s: %v", filePath, err)
 	}
-	return ioutil.WriteFile(aPath, file, 0777)
+	return AttributedFilePointer{FilePath: aPath}, ioutil.WriteFile(aPath, file, 0777)
 }
 
-func attributeRawFile(filePath, bytes string, attributions ...Attribution) error {
+func attributeRawFile(filePath, bytes string, attributions ...Attribution) (AttributedFilePointer, error) {
 	raf := &rawAttributedFile{
-		attributions: attributions,
-		data:         bytes,
+		Attribs: attributions,
+		Data:    bytes,
 	}
 	file, err := xml.MarshalIndent(raf, "", " ")
 	if err != nil {
-		return err
+		return AttributedFilePointer{}, err
 	}
-	return ioutil.WriteFile(filePath+rawAttributedFileExtension, file, 0777)
+	path := filePath + rawAttributedFileExtension
+	return AttributedFilePointer{FilePath: path}, ioutil.WriteFile(path, file, 0777)
 }

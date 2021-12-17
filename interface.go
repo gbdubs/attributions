@@ -20,18 +20,30 @@ type AttributedFile interface {
 	Read() ([]byte, error)
 }
 
+type AttributedFilePointer struct {
+	FilePath string
+}
+
 func ReadAttributedFile(filePath string) (AttributedFile, error) {
 	return readAttributedFile(filePath)
+}
+
+func (a AttributedFilePointer) ReadAttributedFile() (AttributedFile, error) {
+	return readAttributedFile(a.FilePath)
+}
+
+func ReadAllAttributedFilePointers(dirPath string) ([]AttributedFilePointer, error) {
+	return readAllAttributedFilePointers(dirPath)
 }
 
 func ReadAllAttributedFiles(dirPath string) ([]AttributedFile, error) {
 	return readAllAttributedFiles(dirPath)
 }
 
-func AttributeLocalFile(filePath string, attributions ...Attribution) error {
+func AttributeLocalFile(filePath string, attributions ...Attribution) (AttributedFilePointer, error) {
 	return attributeLocalFile(filePath, attributions...)
 }
 
-func AttributeRawFile(filePath, bytes string, attributions ...Attribution) error {
+func AttributeRawFile(filePath, bytes string, attributions ...Attribution) (AttributedFilePointer, error) {
 	return attributeRawFile(filePath, bytes, attributions...)
 }

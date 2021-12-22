@@ -1,6 +1,8 @@
 package attributions
 
-import "time"
+import (
+	"time"
+)
 
 type Attribution struct {
 	OriginUrl           string    `xml:"origin_url"`
@@ -18,6 +20,9 @@ type Attribution struct {
 type AttributedFile interface {
 	Attributions() []Attribution
 	Read() ([]byte, error)
+	ReadString() (string, error)
+	SHA256() string
+	del() error
 }
 
 type AttributedFilePointer struct {
@@ -46,4 +51,12 @@ func AttributeLocalFile(filePath string, attributions ...Attribution) (Attribute
 
 func AttributeRawFile(filePath, bytes string, attributions ...Attribution) (AttributedFilePointer, error) {
 	return attributeRawFile(filePath, bytes, attributions...)
+}
+
+func (a AttributedFilePointer) Delete() error {
+	return a.del()
+}
+
+func (a AttributedFilePointer) CopyTo(newLocalPath string) (AttributedFilePointer, error) {
+	return a.copyTo(newLocalPath)
 }

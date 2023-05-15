@@ -31,6 +31,18 @@ func (f *localAttributedFile) Read() ([]byte, error) {
 	return b, nil
 }
 
+func (afp AttributedFilePointer) GetDataPath() (string, error) {
+	af, err := afp.ReadAttributedFile()
+	if err != nil {
+		return "", fmt.Errorf("reading afp: %w", err)
+	}
+	laf, ok := af.(*localAttributedFile)
+	if !ok {
+		return "", fmt.Errorf("can't call GetDataPath on type %T", afp)
+	}
+	return laf.DataPath, nil
+}
+
 func (f *localAttributedFile) ReadString() (string, error) {
 	b, err := f.Read()
 	return string(b), err
@@ -225,4 +237,11 @@ func (a AttributedFilePointer) copyTo(newPath string) (AttributedFilePointer, er
 		return a, fmt.Errorf("While attributing newly copied file at %s: %v", newPath, err)
 	}
 	return afp, nil
+}
+
+func (a AttributedFilePointer) base() string {
+	s := filepath.Base(a.FilePath)
+	s = strings.ReplaceAll(s, rawAttributedFileExtension, "")
+	s = strings.ReplaceAll(s, localAttributedFileExtension, "")
+	return s
 }

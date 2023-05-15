@@ -60,3 +60,11 @@ func (a AttributedFilePointer) Delete() error {
 func (a AttributedFilePointer) CopyTo(newLocalPath string) (AttributedFilePointer, error) {
 	return a.copyTo(newLocalPath)
 }
+
+func (a AttributedFilePointer) CopyToDir(newDirPath string) (AttributedFilePointer, error) {
+	return a.copyTo(newDirPath + "/" + a.base())
+}
+
+func (a AttributedFilePointer) Base() string {
+	return a.base()
+}
